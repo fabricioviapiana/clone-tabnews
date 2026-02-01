@@ -29,6 +29,10 @@ describe("GET /api/v1/users", () => {
 
       const responseBody = await response.json();
 
+      expect(response.headers.get("Cache-Control")).toBe(
+        "no-store, public, no-cache, must-revalidate",
+      );
+
       expect(responseBody).toEqual({
         id: createdUser.id,
         username: "UserWithValidSession",
@@ -170,9 +174,6 @@ describe("GET /api/v1/users", () => {
       expect(
         renewedSessionObject.updated_at > sessionObject.updated_at,
       ).toEqual(true);
-
-      console.log(sessionObject);
-      console.log(renewedSessionObject);
     });
   });
 });
