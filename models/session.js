@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import database from "infra/database.js";
+import { UnauthorizedError } from "infra/errors";
 
 /**
  * 30 days
@@ -45,8 +46,15 @@ export async function findOneValidByToken(token) {
       `,
       values: [token],
     });
+    const sessionFound = results.rows[0];
 
-    return results.rows[0];
+    if (!sessionFound) {
+      throw new UnauthorizedError({
+        message: "Usuário não possui sessão ativa",
+        action: "Verifique se o usuário está logado e tente novamente",
+      });
+    }
+    return sessionFound;
   }
 }
 
@@ -68,6 +76,29 @@ export async function renew(sessionId) {
         RETURNING *;
       `,
       values: [sessionId, expiresAt],
+    });
+
+    return results.rows[0];
+  }
+}
+
+export async function expireById(sessionId) {
+  const expiredSession = await runUpdateQuery(sessionId);
+  return expiredSession;
+
+  async function runUpdateQuery(sessionId) {
+    const results = await database.query({
+      text: `
+        UPDATE
+          sessions
+        SET
+          expires_at = expires_at - interval '1 year',
+          updated_at = NOW()
+        WHERE
+          id = $1
+        RETURNING *;
+      `,
+      values: [sessionId],
     });
 
     return results.rows[0];
