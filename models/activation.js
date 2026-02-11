@@ -1,6 +1,7 @@
 import email from "infra/email.js";
 import database from "infra/database.js";
 import webserver from "infra/webserver.js";
+import { NotFoundError } from "infra/errors";
 
 /**
  * 15 MINUTES
@@ -40,11 +41,11 @@ Equipe Fintab`,
   });
 }
 
-async function findOneByUserId(userId) {
-  const result = await runSelectQuery(userId);
+async function findOneByValidId(activationToken) {
+  const result = await runSelectQuery(activationToken);
   return result;
 
-  async function runSelectQuery(userId) {
+  async function runSelectQuery(activationToken) {
     const results = await database.query({
       text: `
         SELECT 
@@ -52,10 +53,21 @@ async function findOneByUserId(userId) {
         FROM
           user_activation_tokens
         WHERE
-          user_id = $1
+          id = $1
+          AND expires_at > NOW()
+          and used_at IS NULL
         LIMIT 1;`,
-      values: [userId],
+      values: [activationToken],
     });
+
+    if (results.rowCount === 0) {
+      throw new NotFoundError({
+        message:
+          "O token de ativação utilizado não foi encontrato no sistema ou expirou",
+        action: "Faça um novo cadastro",
+      });
+    }
+
     return results.rows[0];
   }
 }
@@ -63,7 +75,7 @@ async function findOneByUserId(userId) {
 const activation = {
   sendEmailToUser,
   create,
-  findOneByUserId,
+  findOneByValidId,
 };
 
 export default activation;

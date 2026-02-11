@@ -94,6 +94,32 @@ async function getLastEmail() {
   };
 }
 
+async function findActivationByUserId(userId) {
+  const result = await runSelectQuery(userId);
+  return result;
+
+  async function runSelectQuery(userId) {
+    const results = await database.query({
+      text: `
+        SELECT 
+          *
+        FROM
+          user_activation_tokens
+        WHERE
+          user_id = $1
+        LIMIT 1;`,
+      values: [userId],
+    });
+    return results.rows[0];
+  }
+}
+
+function extractUUID(text) {
+  const regex = /[0-9a-fA-F-]{36}/;
+  const match = text.match(regex);
+  return match ? match[0] : null;
+}
+
 const orchestrator = {
   waitForAllServices,
   clearDatabase,
@@ -102,6 +128,8 @@ const orchestrator = {
   createSession,
   deleteAllEmails,
   getLastEmail,
+  findActivationByUserId,
+  extractUUID,
 };
 
 export default orchestrator;
