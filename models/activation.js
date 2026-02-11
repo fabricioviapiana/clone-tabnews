@@ -2,6 +2,7 @@ import email from "infra/email.js";
 import database from "infra/database.js";
 import webserver from "infra/webserver.js";
 import { NotFoundError } from "infra/errors";
+import * as user from "models/user.js";
 
 /**
  * 15 MINUTES
@@ -72,10 +73,49 @@ async function findOneByValidId(activationToken) {
   }
 }
 
+async function markTokenAsUsed(activationToken) {
+  const result = await runUpdateQuery(activationToken);
+  return result;
+
+  async function runUpdateQuery(activationToken) {
+    const results = await database.query({
+      text: `
+        UPDATE 
+          user_activation_tokens
+        SET
+          used_at = timezone('utc', now()),
+          updated_at = timezone('utc', now())
+        WHERE
+          id = $1
+          AND expires_at > NOW()
+          AND used_at IS NULL
+        RETURNING *`,
+      values: [activationToken],
+    });
+
+    if (results.rowCount === 0) {
+      throw new NotFoundError({
+        message:
+          "O token de ativação utilizado não foi encontrato no sistema ou expirou",
+        action: "Faça um novo cadastro",
+      });
+    }
+
+    return results.rows[0];
+  }
+}
+
+async function activateUserById(userId) {
+  const activatedUser = await user.setFeatures(userId, ["create:session"]);
+  return activatedUser;
+}
+
 const activation = {
   sendEmailToUser,
   create,
   findOneByValidId,
+  markTokenAsUsed,
+  activateUserById,
 };
 
 export default activation;
