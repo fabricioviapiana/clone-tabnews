@@ -3,6 +3,7 @@ import { version as uuidVersion } from "uuid";
 import crypto from "node:crypto";
 import setCookieParser from "set-cookie-parser";
 import * as session from "models/session.js";
+import { describe } from "node:test";
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
@@ -10,42 +11,61 @@ beforeAll(async () => {
   await orchestrator.runPendingMigrations();
 });
 
-describe("GET /api/v1/users", () => {
+describe("GET /api/v1/user", () => {
+  describe("Anonymous user", () => {
+    test("Retrieving the endpoint", async () => {
+      const response = await fetch("http://localhost:3000/api/v1/user");
+
+      expect(response.status).toBe(403);
+
+      const responseBody = await response.json();
+
+      expect(responseBody).toEqual({
+        name: "ForbiddenError",
+        message: "Você não possui permissão para executar esta ação",
+        action: "Verifique se o ususário possui a feature read:session",
+        status_code: 403,
+      });
+    });
+  });
+
   describe("Default user", () => {
     test("With valid session", async () => {
       const createdUser = await orchestrator.createUser({
         username: "UserWithValidSession",
       });
 
+      const activatedUser = await orchestrator.activateUser(createdUser.id);
+
       const sessionObject = await orchestrator.createSession(createdUser.id);
 
-      const response = await fetch("http://localhost:3000/api/v1/user", {
+      const userResponse = await fetch("http://localhost:3000/api/v1/user", {
         headers: {
           Cookie: `session_id=${sessionObject.token}`,
         },
       });
 
-      expect(response.status).toBe(200);
+      expect(userResponse.status).toBe(200);
 
-      const responseBody = await response.json();
+      const userResponseBody = await userResponse.json();
 
-      expect(response.headers.get("Cache-Control")).toBe(
+      expect(userResponse.headers.get("Cache-Control")).toBe(
         "no-store, public, no-cache, must-revalidate",
       );
 
-      expect(responseBody).toEqual({
+      expect(userResponseBody).toEqual({
         id: createdUser.id,
         username: "UserWithValidSession",
         email: createdUser.email,
-        features: ["read:activation_token"],
+        features: ["create:session", "read:session"],
         password: createdUser.password,
         created_at: createdUser.created_at.toISOString(),
-        updated_at: createdUser.updated_at.toISOString(),
+        updated_at: activatedUser.updated_at.toISOString(),
       });
 
-      expect(uuidVersion(responseBody.id)).toBe(4);
-      expect(Date.parse(responseBody.created_at)).not.toBeNaN();
-      expect(Date.parse(responseBody.updated_at)).not.toBeNaN();
+      expect(uuidVersion(userResponseBody.id)).toBe(4);
+      expect(Date.parse(userResponseBody.created_at)).not.toBeNaN();
+      expect(Date.parse(userResponseBody.updated_at)).not.toBeNaN();
 
       // Session renewal assertions
       const renewedSessionObject = await session.findOneValidByToken(
@@ -59,7 +79,7 @@ describe("GET /api/v1/users", () => {
       ).toEqual(true);
 
       // Set cookie assertions
-      const parsedSetCookie = setCookieParser(response, {
+      const parsedSetCookie = setCookieParser(userResponse, {
         map: true,
       });
       expect(parsedSetCookie.session_id).toEqual({
@@ -136,6 +156,8 @@ describe("GET /api/v1/users", () => {
         username: "UserAlmostExpired",
       });
 
+      const activatedUser = await orchestrator.activateUser(createdUser.id);
+
       const sessionObject = await orchestrator.createSession(createdUser.id);
 
       jest.useRealTimers();
@@ -156,10 +178,10 @@ describe("GET /api/v1/users", () => {
         id: createdUser.id,
         username: createdUser.username,
         email: createdUser.email,
-        features: ["read:activation_token"],
+        features: ["create:session", "read:session"],
         password: createdUser.password,
         created_at: createdUser.created_at.toISOString(),
-        updated_at: createdUser.updated_at.toISOString(),
+        updated_at: activatedUser.updated_at.toISOString(),
       });
 
       expect(uuidVersion(responseBody.id)).toBe(4);
