@@ -1,6 +1,7 @@
 import * as cookie from "cookie";
 import * as session from "models/session.js";
 import * as user from "models/user.js";
+import * as authorization from "models/authorization.js";
 import {
   InternalServerError,
   MethodNotAllowedError,
@@ -91,7 +92,7 @@ async function injectAnonymousUser(request) {
 
 function canRequest(feature) {
   return function canRequestMiddleware(request, response, next) {
-    if (request.context?.user?.features.includes(feature)) {
+    if (authorization.can(request.context?.user, feature)) {
       return next();
     }
 
