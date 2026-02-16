@@ -307,4 +307,53 @@ describe("PATCH /api/v1/users/[username]", () => {
       expect(incorrectPasswordMatch).toBe(false);
     });
   });
+
+  describe("Priveleged user", () => {
+    test("With `update:user:others` targeting defaultUser", async () => {
+      const privelegedUser = await orchestrator.createUser();
+      await orchestrator.activateUser(privelegedUser.id);
+      await orchestrator.addFeaturesToUser(privelegedUser.id, [
+        "update:user:others",
+      ]);
+      const sessionPrivelegedUser = await orchestrator.createSession(
+        privelegedUser.id,
+      );
+
+      const defaultUser = await orchestrator.createUser();
+
+      const response = await fetch(
+        `http://localhost:3000/api/v1/users/${defaultUser.username}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: `session_id=${sessionPrivelegedUser.token}`,
+          },
+          body: JSON.stringify({
+            username: "AlteradoPorPrivilegiado",
+          }),
+        },
+      );
+
+      expect(response.status).toBe(200);
+      const responseBody = await response.json();
+      expect(responseBody).toEqual({
+        id: defaultUser.id,
+        username: "AlteradoPorPrivilegiado",
+        email: defaultUser.email,
+        features: defaultUser.features,
+        password: defaultUser.password,
+        created_at: defaultUser.created_at.toISOString(),
+        updated_at: responseBody.updated_at,
+      });
+
+      expect(uuidVersion(responseBody.id)).toBe(4);
+      expect(Date.parse(responseBody.created_at)).not.toBeNaN();
+      expect(Date.parse(responseBody.updated_at)).not.toBeNaN();
+      expect(
+        Date.parse(responseBody.updated_at) >
+          Date.parse(defaultUser.updated_at),
+      ).toBe(true);
+    });
+  });
 });
