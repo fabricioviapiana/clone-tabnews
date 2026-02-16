@@ -10,12 +10,15 @@ router.patch(controller.canRequest("read:activation_token"), patchHandler);
 async function patchHandler(request, response) {
   const activationTokenParam = request.query.token;
 
-  const activatedTokenObject =
+  const validActivationCode =
+    await activation.findOneByValidId(activationTokenParam);
+
+  await activation.activateUserByUserId(validActivationCode.user_id);
+
+  const usedActivationToken =
     await activation.markTokenAsUsed(activationTokenParam);
 
-  await activation.activateUserById(activatedTokenObject.user_id);
-
-  return response.status(200).json(activatedTokenObject);
+  return response.status(200).json(usedActivationToken);
 }
 
 export default router.handler(controller.errorHandlers);

@@ -65,8 +65,12 @@ async function createUser(userObject) {
   });
 }
 
+async function createActivationToken(userObject) {
+  return await activation.create(userObject.id);
+}
+
 async function activateUser(userId) {
-  return await activation.activateUserById(userId);
+  return await activation.activateUserByUserId(userId);
 }
 
 async function createSession(userId) {
@@ -136,6 +140,7 @@ const orchestrator = {
   findActivationByUserId,
   extractUUID,
   activateUser,
+  createActivationToken,
 };
 
 export default orchestrator;
