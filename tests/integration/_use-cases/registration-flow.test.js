@@ -78,7 +78,11 @@ describe("Use case: registration flow (all successful)", () => {
     expect(Date.parse(activationTokenObject.used_at)).not.toBeNaN();
 
     const activatedUser = await user.findOneByUsername("RegistrationFlow");
-    expect(activatedUser.features).toEqual(["create:session", "read:session"]);
+    expect(activatedUser.features).toEqual([
+      "create:session",
+      "read:session",
+      "update:user",
+    ]);
   });
 
   test("Login", async () => {
@@ -119,7 +123,7 @@ describe("Use case: registration flow (all successful)", () => {
       username: createUserResponseBody.username,
       email: createUserResponseBody.email,
       password: createUserResponseBody.password,
-      features: ["create:session", "read:session"],
+      features: ["create:session", "read:session", "update:user"],
       created_at: createUserResponseBody.created_at,
       updated_at: userResponseBody.updated_at,
     });
