@@ -1,4 +1,33 @@
+import { InternalServerError } from "infra/errors";
+
+const availableFeatures = [
+  // USER
+  "read:user",
+  "read:user:self",
+  "create:user",
+  "update:user",
+  "update:user:others",
+
+  // SESSION
+  "read:session",
+  "create:session",
+
+  // ACTIVATION TOKEN
+  "read:activation_token",
+
+  // MIGRATION
+  "read:migration",
+  "create:migration",
+
+  // STATUS
+  "read:status",
+  "read:status:all",
+];
+
 export function can(user, feature, resource) {
+  validateUser(user);
+  validateFeature(feature);
+
   let authorized = false;
 
   if (user.features.includes(feature)) {
@@ -17,6 +46,10 @@ export function can(user, feature, resource) {
 }
 
 export function filterOutput(user, feature, resource) {
+  validateUser(user);
+  validateFeature(feature);
+  validateResource(resource);
+
   if (feature === "read:user") {
     return {
       id: resource.id,
@@ -81,5 +114,30 @@ export function filterOutput(user, feature, resource) {
     }
 
     return result;
+  }
+}
+
+function validateUser(user) {
+  if (!user || !user.features) {
+    throw new InternalServerError({
+      cause: "É necessário fornecer user no model authorization",
+    });
+  }
+}
+
+function validateFeature(feature) {
+  if (!feature || !availableFeatures.includes(feature)) {
+    throw new InternalServerError({
+      cause:
+        "É necessário fornecer uma feature conhecida no model authorizations",
+    });
+  }
+}
+
+function validateResource(resource) {
+  if (!resource) {
+    throw new InternalServerError({
+      cause: "É necessário fornecer um resource no model authorizations",
+    });
   }
 }
