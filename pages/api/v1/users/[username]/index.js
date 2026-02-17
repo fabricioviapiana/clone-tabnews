@@ -7,16 +7,28 @@ import { ForbiddenError } from "infra/errors";
 const router = createRouter();
 
 router.use(controller.injectAnonymousOrUser);
-router.get(getHandler);
-router.patch(controller.canRequest("update:user"), patchHandler);
 
 export default router.handler(controller.errorHandlers);
 
+// Get
+router.get(getHandler);
+
 async function getHandler(request, response) {
+  const userTryingToGet = request.context.user;
   const userName = request.query.username;
   const userFound = await user.findOneByUsername(userName);
-  return response.status(200).json(userFound);
+
+  const secureOutputValues = authorization.filterOutput(
+    userTryingToGet,
+    "read:user",
+    userFound,
+  );
+
+  return response.status(200).json(secureOutputValues);
 }
+
+// Patch
+router.patch(controller.canRequest("update:user"), patchHandler);
 
 async function patchHandler(request, response) {
   const userName = request.query.username;
@@ -34,5 +46,12 @@ async function patchHandler(request, response) {
   }
 
   const updatedUser = await user.update(userName, userInputValues);
-  return response.status(200).json(updatedUser);
+
+  const secureOutputValues = authorization.filterOutput(
+    userTryingToPatch,
+    "read:user",
+    updatedUser,
+  );
+
+  return response.status(200).json(secureOutputValues);
 }

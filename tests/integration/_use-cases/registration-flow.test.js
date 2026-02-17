@@ -36,9 +36,7 @@ describe("Use case: registration flow (all successful)", () => {
     expect(createUserResponseBody).toEqual({
       id: createUserResponseBody.id,
       username: "RegistrationFlow",
-      email: "registration.flow@curso.dev",
       features: ["read:activation_token"],
-      password: createUserResponseBody.password,
       created_at: createUserResponseBody.created_at,
       updated_at: createUserResponseBody.updated_at,
     });
@@ -121,8 +119,8 @@ describe("Use case: registration flow (all successful)", () => {
     expect(userResponseBody).toEqual({
       id: createUserResponseBody.id,
       username: createUserResponseBody.username,
-      email: createUserResponseBody.email,
-      password: createUserResponseBody.password,
+      email: userResponseBody.email,
+      password: userResponseBody.password,
       features: ["create:session", "read:session", "update:user"],
       created_at: createUserResponseBody.created_at,
       updated_at: userResponseBody.updated_at,
