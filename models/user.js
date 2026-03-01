@@ -135,6 +135,7 @@ export async function create(userInputValues) {
   await validateUniqueEmail(userInputValues.email);
   await validateUniqueUsername(userInputValues.username);
   await hashPasswordInObject(userInputValues);
+  injectDefaultFeaturesInObject(userInputValues);
 
   const newUsers = await runInsertQuery(userInputValues);
   return newUsers;
@@ -143,17 +144,22 @@ export async function create(userInputValues) {
     const results = await database.query({
       text: `
       INSERT INTO 
-        users (username, email, password) 
+        users (username, email, password, features) 
       VALUES 
-        ($1,$2,$3)
+        ($1,$2,$3,$4)
       RETURNING *;`,
       values: [
         userInputValues.username,
         userInputValues.email,
         userInputValues.password,
+        userInputValues.features,
       ],
     });
     return results.rows[0];
+  }
+
+  function injectDefaultFeaturesInObject(userInputValues) {
+    userInputValues.features = ["read:activation_token"];
   }
 }
 
@@ -213,4 +219,50 @@ async function runUpdateQuery(userWithNewValues) {
   });
 
   return results.rows[0];
+}
+
+export async function setFeatures(userId, features) {
+  const updatedUser = await runUpdateQuery(userId, features);
+  return updatedUser;
+
+  async function runUpdateQuery(userId, features) {
+    const results = await database.query({
+      text: `
+      UPDATE
+        users
+      SET
+        features = $2,
+        updated_at = timezone('utc', now())
+      WHERE
+        id = $1
+      RETURNING *
+    `,
+      values: [userId, features],
+    });
+
+    return results.rows[0];
+  }
+}
+
+export async function addFeatures(userId, features) {
+  const updatedUser = await runUpdateQuery(userId, features);
+  return updatedUser;
+
+  async function runUpdateQuery(userId, features) {
+    const results = await database.query({
+      text: `
+      UPDATE
+        users
+      SET
+        features = array_cat(features, $2),
+        updated_at = timezone('utc', now())
+      WHERE
+        id = $1
+      RETURNING *
+    `,
+      values: [userId, features],
+    });
+
+    return results.rows[0];
+  }
 }

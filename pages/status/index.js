@@ -40,13 +40,9 @@ const DatabaseStatus = () => {
       <h1>Database Status</h1>
       {!isLoading && data ? (
         <>
-          <div>Versão do Postgres: {data.dependencies?.database?.version}</div>
-          <div>
-            Máximo de conexões: {data.dependencies?.database.max_connections}
-          </div>
-          <div>
-            Conexões abertas: {data.dependencies?.database.opened_connections}
-          </div>
+          <div>Versão do Postgres: {data?.version}</div>
+          <div>Máximo de conexões: {data?.max_connections}</div>
+          <div>Conexões abertas: {data?.opened_connections}</div>
         </>
       ) : (
         "Carregando"

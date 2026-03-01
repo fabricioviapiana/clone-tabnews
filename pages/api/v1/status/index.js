@@ -1,14 +1,18 @@
 import { createRouter } from "next-connect";
 import database from "infra/database.js";
 import controller from "infra/controller";
+import * as authorization from "models/authorization.js";
 
 const router = createRouter();
 
+router.use(controller.injectAnonymousOrUser);
 router.get(getHandler);
 
 export default router.handler(controller.errorHandlers);
 
-async function getHandler(_, response) {
+async function getHandler(request, response) {
+  const userTryingToGet = request.context.user;
+
   const pgVersionQuery = await database.query("SHOW server_version;");
   const pgVersion = pgVersionQuery.rows[0].server_version;
 
@@ -24,14 +28,18 @@ async function getHandler(_, response) {
 
   const updatedAt = new Date().toISOString();
 
-  response.status(200).json({
+  const statusResult = {
     updated_at: updatedAt,
-    dependencies: {
-      database: {
-        version: pgVersion,
-        max_connections: parseInt(pgMaxConn),
-        opened_connections: pgConnCount,
-      },
-    },
-  });
+    version: pgVersion,
+    max_connections: parseInt(pgMaxConn),
+    opened_connections: pgConnCount,
+  };
+
+  const secureOutputValue = authorization.filterOutput(
+    userTryingToGet,
+    "read:status",
+    statusResult,
+  );
+
+  response.status(200).json(secureOutputValue);
 }

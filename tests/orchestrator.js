@@ -4,6 +4,7 @@ import database from "infra/database";
 import * as migrator from "models/migrator.js";
 import * as user from "models/user.js";
 import * as session from "models/session";
+import activation from "models/activation.js";
 
 const emailHttpUrl = `http://${process.env.EMAIL_HTTP_HOST}:${process.env.EMAIL_HTTP_PORT}/messages`;
 
@@ -64,6 +65,14 @@ async function createUser(userObject) {
   });
 }
 
+async function createActivationToken(userObject) {
+  return await activation.create(userObject.id);
+}
+
+async function activateUser(userId) {
+  return await activation.activateUserByUserId(userId);
+}
+
 async function createSession(userId) {
   return await session.create(userId);
 }
@@ -79,6 +88,10 @@ async function getLastEmail() {
   const emaiListBody = await emailListResponse.json();
   const lastEmailItem = emaiListBody.pop();
 
+  if (!lastEmailItem) {
+    return null;
+  }
+
   const emailTextResponse = await fetch(
     `${emailHttpUrl}/${lastEmailItem.id}.plain`,
   );
@@ -90,6 +103,37 @@ async function getLastEmail() {
   };
 }
 
+async function findActivationByUserId(userId) {
+  const result = await runSelectQuery(userId);
+  return result;
+
+  async function runSelectQuery(userId) {
+    const results = await database.query({
+      text: `
+        SELECT 
+          *
+        FROM
+          user_activation_tokens
+        WHERE
+          user_id = $1
+        LIMIT 1;`,
+      values: [userId],
+    });
+    return results.rows[0];
+  }
+}
+
+function extractUUID(text) {
+  const regex = /[0-9a-fA-F-]{36}/;
+  const match = text.match(regex);
+  return match ? match[0] : null;
+}
+
+async function addFeaturesToUser(userId, features) {
+  const updatedUser = await user.addFeatures(userId, features);
+  return updatedUser;
+}
+
 const orchestrator = {
   waitForAllServices,
   clearDatabase,
@@ -98,6 +142,11 @@ const orchestrator = {
   createSession,
   deleteAllEmails,
   getLastEmail,
+  findActivationByUserId,
+  extractUUID,
+  activateUser,
+  createActivationToken,
+  addFeaturesToUser,
 };
 
 export default orchestrator;
